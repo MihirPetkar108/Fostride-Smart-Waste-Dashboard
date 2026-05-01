@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
-import authMiddleWare from "./auth.js";
+import { adminAuth, userAuth, authMiddleWare } from "./auth/auth.js";
 import mongoose from "mongoose";
 import Users from "./models/users.js";
 import Waste from "./models/waste.js";
@@ -75,18 +75,125 @@ app.post("/signin", async (req, res) => {
     });
 });
 
-app.get("/authenticatedRoute", authMiddleWare, (req, res) => {
+app.get("/authenticatedRoute", authMiddleWare, adminAuth, (req, res) => {
     const username = req.username;
     const role = req.role;
-    if (role !== "admin") {
-        res.status(403).json({
-            message: "You don't have permissions to access this route!",
-        });
-        return;
-    }
 
     res.status(200).json({
         message: `Username: ${username}, you are in an authenticated route!`,
+    });
+});
+
+// ------------ USER ROUTES ------------
+
+// Get waste data for a user
+app.get("/user/waste", authMiddleWare, userAuth, async (req, res) => {
+    const username = req.username;
+    const role = req.role;
+
+    const user = await Users.findOne({ username });
+    const wasteData = await Waste.find({ user: user._id });
+    res.status(200).json({
+        wasteData,
+    });
+});
+
+// Add waste data for a user
+app.post("/user/waste", authMiddleWare, userAuth, async (req, res) => {
+    const username = req.username;
+    const role = req.role;
+
+    const user = await Users.findOne({ username });
+    const { wasteType, quantity } = req.body;
+
+    const newWasteData = await Waste.create({
+        user: user._id,
+        wasteType,
+        quantity,
+    });
+
+    res.status(200).json({
+        message: "Waste data added successfully!",
+        wasteData: newWasteData,
+    });
+});
+
+// Get user dashboard
+app.get("/user/dashboard", authMiddleWare, userAuth, async (req, res) => {
+    const username = req.username;
+    const role = req.role;
+
+    const user = await Users.findOne({ username });
+    const totalEntries = await Waste.countDocuments({ user: user._id });
+    const wasteDistribution = await Waste.aggregate([
+        {
+            $match: { user: user._id },
+        },
+        {
+            $group: {
+                _id: "$wasteType",
+                total: { $sum: "$quantity" },
+            },
+        },
+    ]);
+
+    const totalSubmissions = await Waste.find({ user: user._id });
+
+    res.status(200).json({
+        totalEntries,
+        wasteDistribution,
+        totalSubmissions,
+    });
+});
+
+// ------------ ADMIN ROUTES ------------
+
+// Get data for all users
+app.get("/admin", authMiddleWare, adminAuth, async (req, res) => {
+    const username = req.username;
+    const role = req.role;
+
+    const users = await Users.find({ role: "user" }, "_id username");
+    res.status(200).json({
+        users,
+    });
+});
+
+// Get admin dashboard
+app.get("/admin/dashboard", authMiddleWare, adminAuth, async (req, res) => {
+    const totalEntries = await Waste.countDocuments();
+
+    const wasteDistribution = await Waste.aggregate([
+        {
+            $group: {
+                _id: "$wasteType",
+                total: { $sum: "$quantity" },
+            },
+        },
+    ]);
+
+    const submissions = await Waste.find().populate("user", "username");
+
+    res.status(200).json({
+        totalEntries,
+        wasteDistribution,
+        submissions,
+    });
+});
+
+// Get waste data for a particular user
+app.get("/admin/:userId", authMiddleWare, adminAuth, async (req, res) => {
+    const username = req.username;
+    const role = req.role;
+    const userId = req.params.userId;
+
+    const wasteData = await Waste.find({ user: userId }).populate(
+        "user",
+        "username",
+    );
+
+    res.status(200).json({
+        wasteData: wasteData,
     });
 });
 
