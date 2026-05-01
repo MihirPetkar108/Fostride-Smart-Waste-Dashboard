@@ -42,7 +42,7 @@ DBPASSWORD=your_mongodb_password
 Start the API:
 
 ```bash
-node index.js
+nodemon index.js
 ```
 
 The backend server should now be running on `http://localhost:8080`.
@@ -72,5 +72,3 @@ If you would like to test the application quickly without registering, you can u
 
 - **Username:** Soham Kadam
 - **Password:** Soham123
-
-_(Ensure you've seeded or signed up these users under the accurate roles initially, or sign up dynamically from the UI!)_
