@@ -7,6 +7,7 @@ import { adminAuth, userAuth, authMiddleWare } from "./auth/auth.js";
 import mongoose from "mongoose";
 import Users from "./models/users.js";
 import Waste from "./models/waste.js";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 
@@ -39,7 +40,12 @@ app.post("/signup", async (req, res) => {
             return;
         }
 
-        const newUser = await Users.create({ username, password, role });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await Users.create({
+            username,
+            password: hashedPassword,
+            role,
+        });
 
         res.status(200).json({
             message: "You have signed up!",
@@ -60,12 +66,22 @@ app.get("/signin", (_req, res) => {
 app.post("/signin", async (req, res) => {
     const { username, password } = req.body;
 
-    const userExists = await Users.findOne({ username, password });
+    const userExists = await Users.findOne({ username });
 
     if (!userExists) {
         res.status(403).json({
             message: "User doesn't exists",
         });
+        return;
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, userExists.password);
+
+    if (!isPasswordValid) {
+        res.status(403).json({
+            message: "Invalid password",
+        });
+        return;
     }
     const role = userExists.role;
     const token = jwt.sign({ username, role }, process.env.JWTSECRET);
