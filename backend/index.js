@@ -12,10 +12,15 @@ import adminRouter from "./routes/admin.js";
 dotenv.config();
 
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
-app.use(cors());
+app.use(
+    cors({
+        origin: process.env.FRONTEND_URL,
+        credentials: true,
+    }),
+);
 
 // ------------- User authentication routes -------------
 app.use("/authentication", signupRouter);
