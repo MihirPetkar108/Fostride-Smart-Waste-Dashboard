@@ -13,7 +13,6 @@ const Login = () => {
         e.preventDefault();
         setError("");
         try {
-            console.log(import.meta.env.VITE_API_URL);
             const res = await api.post("/authentication/signin", formData);
             login(res.data.token);
             navigate("/"); // The ProtectedRoute inside App will redirect appropriately, or we can decode and push
